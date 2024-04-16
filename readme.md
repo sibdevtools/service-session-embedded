@@ -1,4 +1,4 @@
-# Simple Mock - Service Storage Local
+# Simple Mock - Service Session Local
 
 ## To build
 
