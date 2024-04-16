@@ -1,2 +1,8 @@
-# service-session-local
-Local implementation of session service
+# Simple Mock - Service Session Local
+
+## To build
+
+```shell
+chmod +x gradlew
+./gradlew clean build
+```
