@@ -56,6 +56,7 @@ public class LocalSessionService implements SessionService {
     }
 
     @Override
+    @Transactional
     public LocalSession get(@Nonnull SessionId sessionId) {
         var sessionSnapshot = getSessionSnapshotEntity(sessionId);
 
@@ -63,6 +64,7 @@ public class LocalSessionService implements SessionService {
     }
 
     @Override
+    @Transactional
     public LocalSession get(@Nonnull String uid) {
         var sessionSnapshot = sessionSnapshotEntityRepository.findTopByEntityIdUidOrderByEntityIdVersionAsc(uid)
                 .orElseThrow(() -> new SessionNotFoundException(uid));
@@ -74,6 +76,7 @@ public class LocalSessionService implements SessionService {
     }
 
     @Override
+    @Transactional
     public Set<String> getAttributeNames(@Nonnull SessionId sessionId,
                                          @Nonnull String section) {
         var sessionSnapshot = getSessionSnapshotEntity(sessionId);
@@ -87,6 +90,7 @@ public class LocalSessionService implements SessionService {
     }
 
     @Override
+    @Transactional
     public <T extends Serializable> T getAttribute(@Nonnull SessionId sessionId,
                                                    @Nonnull String section,
                                                    @Nonnull String attribute) {
@@ -175,49 +179,7 @@ public class LocalSessionService implements SessionService {
         var sessionEntity = getSessionSnapshotEntity(sessionId);
         var session = buildLocalSession(sessionId, sessionEntity);
 
-        var sourceAttributes = session.getAttributes();
-        var attributes = new HashMap<String, Map<String, Serializable>>(sourceAttributes.size(), 1);
-
-        for (var entry : sourceAttributes.entrySet()) {
-            var sectionId = entry.getKey();
-            var sectionData = entry.getValue();
-            attributes.put(sectionId, new HashMap<>(sectionData));
-        }
-
-        var actions = modificationQuery.actions();
-        for (var action : actions) {
-            var section = action.getSection();
-            var attributeName = action.getAttributeName();
-
-            var sectionAttributes = attributes.computeIfAbsent(section, k -> new HashMap<>());
-            if (action instanceof AddAction addAction) {
-                var attributeValue = addAction.getAttributeValue();
-
-                if (sectionAttributes.put(attributeName, attributeValue) != null) {
-                    throw new ServiceException(
-                            403,
-                            SessionErrors.ALREADY_EXISTS,
-                            "Attribute %s already exists in section %s".formatted(attributeName, section)
-                    );
-                }
-            } else if (action instanceof SetAction addAction) {
-                var attributeValue = addAction.getAttributeValue();
-
-                if (sectionAttributes.put(attributeName, attributeValue) == null) {
-                    throw new ServiceException(
-                            403,
-                            SessionErrors.NOT_EXISTS,
-                            "Attribute %s not found in section %s".formatted(attributeName, section)
-                    );
-                }
-            } else if (action instanceof DeleteAction && sectionAttributes.remove(attributeName) == null) {
-                throw new ServiceException(
-                        403,
-                        SessionErrors.NOT_EXISTS,
-                        "Attribute %s not found in section %s".formatted(attributeName, section)
-                );
-            }
-        }
+        var attributes = updateAttributes(modificationQuery, session);
 
         var snapshotCodec = getSnapshotCodec(DEFAULT_CODEC_TYPE);
         var snapshot = snapshotCodec.serialize(attributes);
@@ -242,6 +204,62 @@ public class LocalSessionService implements SessionService {
         sessionSnapshotEntityRepository.save(sessionSnapshot);
 
         return newSnapshotId;
+    }
+
+    private static HashMap<String, Map<String, Serializable>> updateAttributes(ModificationQuery modificationQuery,
+                                                                               LocalSession session) {
+        var attributes = makeMutableAttributes(session);
+
+        var actions = modificationQuery.actions();
+        for (var action : actions) {
+            var section = action.getSection();
+            var attributeName = action.getAttributeName();
+
+            var sectionAttributes = attributes.computeIfAbsent(section, k -> new HashMap<>());
+            if (action instanceof AddAction addAction) {
+                var attributeValue = addAction.getAttributeValue();
+
+                if (sectionAttributes.put(attributeName, attributeValue) != null) {
+                    throw new ServiceException(
+                            403,
+                            SessionErrors.ALREADY_EXISTS,
+                            "Attribute %s already exists in section %s".formatted(attributeName, section)
+                    );
+                }
+            } else if (action instanceof SetAction setAction) {
+                if (sectionAttributes.containsKey(attributeName)) {
+                    var addIfNotExists = setAction.isAddIfNotExists();
+                    if (!addIfNotExists) {
+                        throw new ServiceException(
+                                403,
+                                SessionErrors.NOT_EXISTS,
+                                "Attribute '%s' not found in section %s".formatted(attributeName, section)
+                        );
+                    }
+                }
+                var attributeValue = setAction.getAttributeValue();
+                sectionAttributes.put(attributeName, attributeValue);
+            } else if (action instanceof DeleteAction && sectionAttributes.remove(attributeName) == null) {
+                throw new ServiceException(
+                        403,
+                        SessionErrors.NOT_EXISTS,
+                        "Attribute '%s' not found in section %s".formatted(attributeName, section)
+                );
+            }
+        }
+        return attributes;
+    }
+
+    private static HashMap<String, Map<String, Serializable>> makeMutableAttributes(LocalSession session) {
+        var sourceAttributes = session.getAttributes();
+        var attributes = new HashMap<String, Map<String, Serializable>>(sourceAttributes.size(), 1);
+
+        for (var entry : sourceAttributes.entrySet()) {
+            var sectionId = entry.getKey();
+            var sectionData = entry.getValue();
+            attributes.put(sectionId, new HashMap<>(sectionData));
+        }
+        return attributes;
     }
 
     private SessionSnapshotEntity getSessionSnapshotEntity(SessionId sessionId) {
