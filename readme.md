@@ -1,4 +1,4 @@
-# Simple Mock - Service Session Local
+# Simple Mock - Session Service Embedded
 
 ## To build
 
