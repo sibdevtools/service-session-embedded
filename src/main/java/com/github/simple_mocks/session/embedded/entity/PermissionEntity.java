@@ -7,7 +7,7 @@ import lombok.*;
  * @author sibmaks
  * @since 0.0.1
  */
-@Entity(name = "session_service.permission")
+@Entity(name = "session_service_permission")
 @Getter
 @Setter
 @Builder

@@ -11,7 +11,7 @@ import java.util.List;
  * @author sibmaks
  * @since 0.0.1
  */
-@Entity(name = "session_service.session")
+@Entity(name = "session_service_session")
 @Getter
 @Setter
 @Builder
