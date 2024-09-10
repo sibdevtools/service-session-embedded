@@ -9,7 +9,7 @@ import java.time.ZonedDateTime;
  * @author sibmaks
  * @since 0.0.1
  */
-@Entity
+@Entity(name = "session_service.session_snapshot")
 @Getter
 @Setter
 @Builder
