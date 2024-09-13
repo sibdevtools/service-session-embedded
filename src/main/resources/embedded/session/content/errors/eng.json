@@ -1,0 +1,18 @@
+{
+  "ATTRIBUTE_ALREADY_EXISTS": {
+    "title": "Attribute already exists",
+    "description": "Attribute can't be added"
+  },
+  "ATTRIBUTE_NOT_EXISTS": {
+    "title": "Attribute not exists",
+    "description": "Attribute not exists or was deleted"
+  },
+  "SESSION_NOT_EXISTS": {
+    "title": "Session not exists",
+    "description": "Create a new one"
+  },
+  "UNEXPECTED_ERROR": {
+    "title": "Unexpected error",
+    "description": "Session service unexpected error"
+  }
+}
