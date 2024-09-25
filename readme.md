@@ -1,4 +1,4 @@
-# Simple Mock - Session Service Embedded
+# SibDevTools - Session Service Embedded
 
 ## To build
 
